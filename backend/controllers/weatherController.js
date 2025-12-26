@@ -85,8 +85,12 @@ export const getWeather = async (req, res) => {
 
     // 6️⃣ Save search (optional)
     if (req.dbConnected) {
-      Search.create({ city }).catch(() => {});
-    }
+  Search.create({
+    city,
+    temperature: currentRes.data.main.temp
+    }).catch(() => {});
+  }
+
 
     // 7️⃣ Send response
     res.json({
