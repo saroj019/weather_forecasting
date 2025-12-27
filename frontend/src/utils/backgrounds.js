@@ -15,9 +15,9 @@ export const weatherBg = {
 export const defaultBg =
   "linear-gradient(135deg, #0f172a, #1e293b)";
 
-/* =========================
-   📅 Forecast Card Colors
-========================= */
+
+  //  📅 Forecast Card Colors
+
 export const forecastCardBg = {
   Clear: "linear-gradient(135deg, #fde047, #f59e0b)",
   Clouds: "linear-gradient(135deg, #cbd5e1, #94a3b8)",

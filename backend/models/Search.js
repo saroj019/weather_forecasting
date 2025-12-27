@@ -2,14 +2,9 @@ import mongoose from "mongoose";
 
 const searchSchema = new mongoose.Schema(
   {
-    city: {
-      type: String,
-      required: true
-    },
-    temperature: {
-      type: Number,
-      required: true
-    }
+    city: String,
+    temperature: Number,
+    aqi: Number
   },
   { timestamps: true }
 );

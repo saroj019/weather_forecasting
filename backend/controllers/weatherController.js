@@ -1,6 +1,32 @@
 import axios from "axios";
 import Search from "../models/Search.js";
 
+/* US AQI calculation from PM2.5 */
+const calculateAQI = (pm25) => {
+  const breakpoints = [
+    { cLow: 0.0, cHigh: 12.0, iLow: 0, iHigh: 50 },
+    { cLow: 12.1, cHigh: 35.4, iLow: 51, iHigh: 100 },
+    { cLow: 35.5, cHigh: 55.4, iLow: 101, iHigh: 150 },
+    { cLow: 55.5, cHigh: 150.4, iLow: 151, iHigh: 200 },
+    { cLow: 150.5, cHigh: 250.4, iLow: 201, iHigh: 300 },
+    { cLow: 250.5, cHigh: 500.4, iLow: 301, iHigh: 500 }
+  ];
+
+  const bp = breakpoints.find(
+    b => pm25 >= b.cLow && pm25 <= b.cHigh
+  );
+
+  if (!bp) return null;
+
+  const aqi =
+    ((bp.iHigh - bp.iLow) / (bp.cHigh - bp.cLow)) *
+      (pm25 - bp.cLow) +
+    bp.iLow;
+
+  return Math.round(aqi);
+};
+
+
 export const getWeather = async (req, res) => {
   try {
     const city = req.params.city;
@@ -10,45 +36,53 @@ export const getWeather = async (req, res) => {
       return res.status(400).json({ message: "City is required" });
     }
 
-    // 1️⃣ Fetch current weather
+    /* 1️⃣ Current Weather */
     const currentRes = await axios.get(
       "https://api.openweathermap.org/data/2.5/weather",
-      {
-        params: { q: city, units: "metric", appid: apiKey }
-      }
+      { params: { q: city, units: "metric", appid: apiKey } }
     );
 
-    // 2️⃣ Fetch 5-day / 3-hour forecast
+    const { lat, lon } = currentRes.data.coord;
+
+    /* 2️⃣ Air Pollution (PM values) */
+    const airRes = await axios.get(
+      "https://api.openweathermap.org/data/2.5/air_pollution",
+      { params: { lat, lon, appid: apiKey } }
+    );
+
+    const air = airRes.data.list[0].components;
+    const pm25 = air.pm2_5;
+    const pm10 = air.pm10;
+    const aqi = calculateAQI(pm25);
+
+    /* 3️⃣ Forecast (3-hour data) */
     const forecastRes = await axios.get(
       "https://api.openweathermap.org/data/2.5/forecast",
-      {
-        params: { q: city, units: "metric", appid: apiKey }
-      }
+      { params: { q: city, units: "metric", appid: apiKey } }
     );
 
-    const forecastList = forecastRes.data.list;
+    const list = forecastRes.data.list;
 
-    // 3️⃣ Calculate next 24-hour min & max
+    /* 4️⃣ Next 24-hour min/max temperature */
     const now = new Date();
     const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
     let min24h = Infinity;
     let max24h = -Infinity;
 
-    forecastList.forEach(item => {
-      const time = new Date(item.dt_txt);
-      if (time >= now && time <= next24h) {
+    list.forEach(item => {
+      const t = new Date(item.dt_txt);
+      if (t >= now && t <= next24h) {
         min24h = Math.min(min24h, item.main.temp_min);
         max24h = Math.max(max24h, item.main.temp_max);
       }
     });
 
-    // 4️⃣ Group forecast by date
+    /* 5️⃣ Group forecast by day */
     const daily = {};
 
-    forecastList.forEach(item => {
+    list.forEach(item => {
       const date = item.dt_txt.split(" ")[0];
-
       if (!daily[date]) {
         daily[date] = {
           date,
@@ -64,7 +98,6 @@ export const getWeather = async (req, res) => {
 
     const today = new Date().toISOString().split("T")[0];
 
-    // 5️⃣ Build final forecast (today uses 24h values)
     const forecast = Object.values(daily)
       .slice(0, 5)
       .map(day =>
@@ -83,27 +116,29 @@ export const getWeather = async (req, res) => {
             }
       );
 
-    // 6️⃣ Save search (optional)
+    /* 6️⃣ Save search (optional DB) */
     if (req.dbConnected) {
-  Search.create({
-    city,
-    temperature: currentRes.data.main.temp
-    }).catch(() => {});
-  }
+      Search.create({
+        city,
+        temperature: currentRes.data.main.temp,
+        aqi
+      }).catch(() => {});
+    }
 
-
-    // 7️⃣ Send response
+    /* 7️⃣ Response */
     res.json({
       current: {
         ...currentRes.data,
         min24h: Number(min24h.toFixed(1)),
-        max24h: Number(max24h.toFixed(1))
+        max24h: Number(max24h.toFixed(1)),
+        aqi,
+        airQuality: { pm25, pm10 }
       },
       forecast
     });
-  } catch (error) {
+  } catch {
     res.status(404).json({
-      message: "City not found or weather service unavailable"
+      message: "City not found or service unavailable"
     });
   }
 };

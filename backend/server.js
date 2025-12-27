@@ -10,7 +10,7 @@ app.use(cors());
 app.use(express.json());
 
 const dbConnected = await connectDB();
-app.use((req, _, next) => {
+app.use((req, res, next) => {
   req.dbConnected = dbConnected;
   next();
 });
