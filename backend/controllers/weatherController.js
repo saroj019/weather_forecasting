@@ -1,7 +1,7 @@
 import axios from "axios";
 import Search from "../models/Search.js";
 
-/* US AQI calculation from PM2.5 */
+// US AQI calculation from PM2.5 
 const calculateAQI = (pm25) => {
   const breakpoints = [
     { cLow: 0.0, cHigh: 12.0, iLow: 0, iHigh: 50 },
@@ -36,7 +36,7 @@ export const getWeather = async (req, res) => {
       return res.status(400).json({ message: "City is required" });
     }
 
-    /* 1️⃣ Current Weather */
+    //1️⃣ Current Weather 
     const currentRes = await axios.get(
       "https://api.openweathermap.org/data/2.5/weather",
       { params: { q: city, units: "metric", appid: apiKey } }
@@ -44,7 +44,7 @@ export const getWeather = async (req, res) => {
 
     const { lat, lon } = currentRes.data.coord;
 
-    /* 2️⃣ Air Pollution (PM values) */
+    //Air Pollution (PM values) 
     const airRes = await axios.get(
       "https://api.openweathermap.org/data/2.5/air_pollution",
       { params: { lat, lon, appid: apiKey } }
@@ -63,7 +63,7 @@ export const getWeather = async (req, res) => {
 
     const list = forecastRes.data.list;
 
-    /* 4️⃣ Next 24-hour min/max temperature */
+     //Next 24-hour min/max temperature
     const now = new Date();
     const next24h = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
@@ -78,7 +78,7 @@ export const getWeather = async (req, res) => {
       }
     });
 
-    /* 5️⃣ Group forecast by day */
+    //Group forecast by day
     const daily = {};
 
     list.forEach(item => {
@@ -116,7 +116,7 @@ export const getWeather = async (req, res) => {
             }
       );
 
-    /* 6️⃣ Save search (optional DB) */
+    // Save search (optional DB)
     if (req.dbConnected) {
       Search.create({
         city,
@@ -125,7 +125,7 @@ export const getWeather = async (req, res) => {
       }).catch(() => {});
     }
 
-    /* 7️⃣ Response */
+    // Response
     res.json({
       current: {
         ...currentRes.data,

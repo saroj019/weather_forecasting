@@ -26,12 +26,12 @@ function App() {
     }
   };
 
-  // ✅ ADD THESE TWO LINES HERE
+  // ADD THESE TWO LINES HERE
   const condition = weather?.current?.weather?.[0]?.main;
   const bgColor = weatherBg[condition] || defaultBg;
 
   return (
-    // ✅ USE bgColor HERE
+    //  USE bgColor HERE
     <div className="app-wrapper" style={{ background: bgColor }}>
       <div className="app">
         <h1>🌤 Weather Dashboard</h1>
